@@ -8,14 +8,15 @@ Weekly_report_helper 安裝程式（macOS / Windows 共用）
 做的事：
   1. 把 skills/ 底下的兩個 skill 複製到 ~/.claude/skills/（舊版先備份）
   2. 在 ~/.claude/settings.json 加入記錄用的兩個 hook（舊的同名 hook 會先移除，不會重複）
-  3. 建立 ~/AI_coworkRec/ 與週報設定檔範本（已存在就不動）
-  4. 安裝 openpyxl（週報寫 Excel 用）
+  3. 安裝 openpyxl（週報寫 Excel 用）
+  4. 建立 ~/AI_coworkRec/ 與週報設定檔，並詢問週報 Excel 的路徑（已設定且有效就沿用）
 
 hook 與 SKILL.md 裡的指令一律寫成「執行這支安裝程式的 Python 絕對路徑」，
 避開 Windows 沒有 python3、cmd 不認得 $HOME 這類平台差異。
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -38,6 +39,7 @@ SETTINGS = CLAUDE_DIR / "settings.json"
 LOG_DIR = HOME / "AI_coworkRec"
 CONFIG = LOG_DIR / ".weekly_config.json"
 HOOK_MARK = "ai-cowork-log/scripts/log_writer.py"  # 用來辨識「我們的」hook
+SHEET = "AI_Weekly_Data"
 
 PY = Path(sys.executable).as_posix()
 STAMP = datetime.now().strftime("%Y%m%d-%H%M%S-%f")  # 含微秒：連續重跑也不會撞名
@@ -105,23 +107,8 @@ def install_hooks() -> None:
     SETTINGS.write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def init_config() -> bool:
-    print("[3/4] 建立 log 目錄與週報設定檔")
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    if CONFIG.exists():
-        print(f"  {CONFIG} 已存在，不覆蓋")
-        return False
-    CONFIG.write_text(json.dumps({
-        "name": "請填你的名字",
-        "role": "PM / SA / SD / PG 擇一",
-        "excel_path": "請填週報 Excel 的完整路徑",
-    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"  已建立範本 {CONFIG}")
-    return True
-
-
 def install_openpyxl() -> bool:
-    print("[4/4] 檢查 openpyxl")
+    print("[3/4] 檢查 openpyxl")
     try:
         import openpyxl  # noqa: F401
         print("  已安裝")
@@ -137,19 +124,100 @@ def install_openpyxl() -> bool:
     return False
 
 
+def clean_path(raw: str) -> Path:
+    """處理拖曳檔案進視窗時的格式：Windows 會加引號，macOS 會把空白跳脫成「\\ 」。"""
+    s = raw.strip().strip('"').strip("'")
+    if os.name != "nt":
+        s = s.replace("\\ ", " ")
+    return Path(s).expanduser().resolve()
+
+
+def check_excel(p: Path) -> str | None:
+    """可用就回 None，否則回原因。"""
+    if not p.is_file():
+        return "找不到這個檔案"
+    if p.suffix.lower() not in (".xlsx", ".xlsm"):
+        return "不是 .xlsx / .xlsm 檔"
+    try:
+        import openpyxl
+    except ImportError:
+        return None  # openpyxl 沒裝好就無法檢查工作表，先接受；寫入時 write_excel.py 會再檢查
+    try:
+        wb = openpyxl.load_workbook(p, read_only=True)
+        names = wb.sheetnames
+        wb.close()
+    except Exception as e:
+        return f"無法開啟（{e}）"
+    if SHEET not in names:
+        return f"裡面沒有 '{SHEET}' 工作表（現有：{'、'.join(names)}）"
+    return None
+
+
+def ask_excel() -> str | None:
+    print("  請輸入你的週報 Excel 完整路徑（可直接把檔案拖進這個視窗；直接按 Enter 先跳過）")
+    while True:
+        try:
+            raw = input("  > ")
+        except EOFError:
+            return None
+        if not raw.strip():
+            return None
+        p = clean_path(raw)
+        err = check_excel(p)
+        if err is None:
+            return p.as_posix()
+        print(f"  ✗ {err}：{p}")
+        print("    請重新輸入，或直接按 Enter 跳過")
+
+
+def init_config() -> list[str]:
+    """回傳安裝後使用者還要處理的事。"""
+    print("[4/4] 週報設定檔")
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    config = {"name": "請填你的名字", "role": "PM / SA / SD / PG 擇一", "excel_path": ""}
+    if CONFIG.exists():
+        try:
+            config.update(json.loads(CONFIG.read_text(encoding="utf-8")))
+        except json.JSONDecodeError as e:
+            return [f"{CONFIG} 不是合法的 JSON（{e}），未修改，請手動修正。"]
+    before = dict(config)
+
+    current = str(config.get("excel_path") or "")
+    excel_ok = bool(current) and check_excel(Path(current).expanduser()) is None
+    if excel_ok:
+        print(f"  週報 Excel：{current}（已設定，沿用）")
+    else:
+        if current:
+            print(f"  目前設定的 Excel 無法使用：{current}")
+        picked = ask_excel()
+        if picked:
+            config["excel_path"] = picked
+            excel_ok = True
+            print(f"  已設定週報 Excel：{picked}")
+
+    if config != before or not CONFIG.exists():
+        CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    todo = []
+    if not excel_ok:
+        todo.append(f"尚未設定週報 Excel：重跑一次安裝程式，或編輯 {CONFIG} 的 excel_path。")
+    if str(config.get("name", "")).startswith("請填") or config.get("role") not in ("PM", "SA", "SD", "PG"):
+        todo.append(f"請編輯 {CONFIG}，填入姓名（name）與角色（role：PM / SA / SD / PG）。")
+    return todo
+
+
 def main() -> None:
     print(f"Python：{PY}\n")
     install_skills()
     install_hooks()
-    new_config = init_config()
     ok_xlsx = install_openpyxl()
+    todo = init_config()
 
     print("\n==== 安裝完成 ====")
     warnings = []
     if not shutil.which("claude"):
         warnings.append("找不到 claude 指令：記錄仍會寫入，但摘要會變成「待補」。請確認 Claude Code CLI 已安裝並在 PATH 中。")
-    if new_config:
-        warnings.append(f"請編輯 {CONFIG}，填入姓名、角色與週報 Excel 路徑。")
+    warnings += todo
     if not ok_xlsx:
         warnings.append("openpyxl 未安裝，週報無法寫入 Excel。")
     for w in warnings:

@@ -75,14 +75,16 @@ py install.py
 
 - 把兩個 skill 複製到 `~/.claude/skills/`（Windows 是 `C:\Users\你的帳號\.claude\skills\`）
 - 在 `~/.claude/settings.json` 加入記錄用的 hook（**保留你原有的其他設定**，修改前會先備份到 `~/.claude/backups/`）
-- 建立記錄資料夾 `~/AI_coworkRec/` 與週報設定檔範本
 - 安裝 Excel 套件 `openpyxl`
+- 建立記錄資料夾 `~/AI_coworkRec/` 與週報設定檔，並**詢問你的週報 Excel 放在哪裡**
 
-重複執行是安全的，不會產生重複的 hook。
+詢問 Excel 路徑時，**直接把你的週報 Excel 檔案拖進終端機／PowerShell 視窗**再按 Enter 即可（也可以手動輸入完整路徑）。安裝程式會檢查檔案存在、而且裡面有 `AI_Weekly_Data` 工作表；不對會請你重新輸入。還沒拿到 Excel 的話直接按 Enter 跳過，之後重跑安裝程式再設定。
 
-### 3. 填寫週報設定檔
+重複執行是安全的：不會產生重複的 hook，已設定好的 Excel 路徑也會沿用、不再詢問。
 
-用文字編輯器打開 `~/AI_coworkRec/.weekly_config.json`（Windows：`C:\Users\你的帳號\AI_coworkRec\.weekly_config.json`），改成你的資料：
+### 3. 填寫姓名與角色
+
+用文字編輯器打開 `~/AI_coworkRec/.weekly_config.json`（Windows：`C:\Users\你的帳號\AI_coworkRec\.weekly_config.json`），把 `name`、`role` 改成你的資料（`excel_path` 安裝時已經幫你填好）：
 
 ```json
 {
@@ -93,7 +95,7 @@ py install.py
 ```
 
 - `role`：PM、SA、SD、PG 擇一
-- `excel_path`：週報 Excel 的完整路徑。Windows 請用正斜線，例如 `"C:/Users/xiaoming/Documents/2026_FSB_AI_Weekly.xlsx"`
+- `excel_path`：週報 Excel 的完整路徑。之後 Excel 換位置時，重跑安裝程式或直接改這一行都可以；手動改的話 Windows 請用正斜線，例如 `"C:/Users/xiaoming/Documents/2026_FSB_AI_Weekly.xlsx"`
 
 > 這個檔名以 `.` 開頭，macOS Finder 預設看不到，可在 Finder 按 `Cmd + Shift + .` 顯示隱藏檔，或直接用終端機 `open -e ~/AI_coworkRec/.weekly_config.json` 開啟。
 
