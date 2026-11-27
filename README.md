@@ -39,7 +39,7 @@
 1. **Claude Code**：已安裝並登入（終端機輸入 `claude --version` 有版本號即可）。
 2. **Python 3.10 以上**
    - macOS：終端機輸入 `python3 --version` 確認。版本太舊可用 [python.org](https://www.python.org/downloads/) 或 `brew install python` 安裝。
-   - Windows：到 [python.org](https://www.python.org/downloads/) 下載安裝，**安裝第一個畫面務必勾選「Add python.exe to PATH」**。裝好後在 PowerShell 輸入 `py --version` 確認。
+   - Windows：在 PowerShell 輸入 `py --version`，顯示 `Python 3.10` 以上即可。沒有的話，從 [python.org](https://www.python.org/downloads/) 或 Microsoft Store 安裝 **Python install manager**，裝好後重開 PowerShell 再確認一次。不需要另外設定 PATH。
 3. **週報 Excel 範本**：使用部門提供的 FSB AI 週報 Excel，裡面要有 `AI_Weekly_Data` 工作表。（只用記錄功能的話可以先不用。）
 
 ---
@@ -156,8 +156,16 @@ hook 執行時找不到 `claude` 指令。確認在終端機輸入 `claude --ver
 2. 打開 `~/.claude/settings.json`，確認 `hooks` 裡有 `UserPromptSubmit` 與 `Stop` 兩段，內容包含 `log_writer.py`。
 3. 確認是用上面「適用環境」表中 ✅ 的方式使用。
 
-**Windows 顯示 `需要 Python 3.10 以上` 或找不到 `py`**
-重新安裝 Python 並勾選「Add python.exe to PATH」，然後重開 PowerShell。
+**Windows 顯示 `需要 Python 3.10 以上`**
+`py` 用到的 Python 版本太舊。安裝新版 Python（見「安裝前準備」）後重開 PowerShell，再執行一次 `py install.py`。
+
+**Windows 找不到 `py`，或輸入 `python` 會跳出 Microsoft Store**
+依序檢查（出自 [Python 官方 Windows 說明](https://docs.python.org/3/using/windows.html) 的疑難排解）：
+1. 確認已安裝 **Python install manager**（python.org 或 Microsoft Store）。
+2. 開始選單搜尋「管理應用程式執行別名」，確認 Python 相關的別名是開啟的；已開啟的話，關掉再打開一次。
+3. 確認 PATH 環境變數裡有 `%UserProfile%\AppData\Local\Microsoft\WindowsApps`。
+
+每一步做完都要重開 PowerShell，再輸入 `py --version` 確認。
 
 **想調整摘要時間上限或模型**
 可設定環境變數：`AI_COWORK_LOG_TIMEOUT`（秒，預設 25）、`AI_COWORK_LOG_MODEL`（預設 `haiku`）、`AI_COWORK_LOG_DIR`（記錄資料夾）。
