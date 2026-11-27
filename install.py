@@ -9,7 +9,7 @@ Weekly_report_helper 安裝程式（macOS / Windows 共用）
   1. 把 skills/ 底下的兩個 skill 複製到 ~/.claude/skills/（舊版先備份）
   2. 在 ~/.claude/settings.json 加入記錄用的兩個 hook（舊的同名 hook 會先移除，不會重複）
   3. 安裝 openpyxl（週報寫 Excel 用）
-  4. 建立 ~/AI_coworkRec/ 與週報設定檔，並詢問週報 Excel 的路徑（已設定且有效就沿用）
+  4. 建立 ~/AI_coworkRec/ 與週報設定檔，並詢問姓名、角色、週報 Excel 路徑（已設定且有效就沿用）
 
 hook 與 SKILL.md 裡的指令一律寫成「執行這支安裝程式的 Python 絕對路徑」，
 避開 Windows 沒有 python3、cmd 不認得 $HOME 這類平台差異。
@@ -153,8 +153,12 @@ def check_excel(p: Path) -> str | None:
     return None
 
 
-def ask_excel() -> str | None:
-    print("  請輸入你的週報 Excel 完整路徑（可直接把檔案拖進這個視窗；直接按 Enter 先跳過）")
+ROLES = ("PM", "SA", "SD", "PG")
+
+
+def ask(prompt: str, parse) -> str | None:
+    """parse(raw) 回傳 (值, None) 或 (None, 錯誤原因)。直接按 Enter 回 None（跳過）。"""
+    print(f"  {prompt}（直接按 Enter 先跳過）")
     while True:
         try:
             raw = input("  > ")
@@ -162,12 +166,22 @@ def ask_excel() -> str | None:
             return None
         if not raw.strip():
             return None
-        p = clean_path(raw)
-        err = check_excel(p)
+        value, err = parse(raw)
         if err is None:
-            return p.as_posix()
-        print(f"  ✗ {err}：{p}")
+            return value
+        print(f"  ✗ {err}")
         print("    請重新輸入，或直接按 Enter 跳過")
+
+
+def parse_excel(raw: str):
+    p = clean_path(raw)
+    err = check_excel(p)
+    return (p.as_posix(), None) if err is None else (None, f"{err}：{p}")
+
+
+def parse_role(raw: str):
+    r = raw.strip().upper()
+    return (r, None) if r in ROLES else (None, f"角色只能是 {' / '.join(ROLES)}")
 
 
 def init_config() -> list[str]:
@@ -182,28 +196,36 @@ def init_config() -> list[str]:
             return [f"{CONFIG} 不是合法的 JSON（{e}），未修改，請手動修正。"]
     before = dict(config)
 
-    current = str(config.get("excel_path") or "")
-    excel_ok = bool(current) and check_excel(Path(current).expanduser()) is None
-    if excel_ok:
-        print(f"  週報 Excel：{current}（已設定，沿用）")
-    else:
-        if current:
+    # (欄位, 顯示名稱, 詢問文字, 現值是否可用, 輸入解析)；現值可用就沿用、不再問
+    fields = [
+        ("name", "姓名", "請輸入你的姓名（會填進週報的「姓名」欄）",
+         lambda v: bool(v) and not v.startswith("請填"), lambda raw: (raw.strip(), None)),
+        ("role", "角色", f"請輸入你的角色（{' / '.join(ROLES)}）",
+         lambda v: v in ROLES, parse_role),
+        ("excel_path", "週報 Excel", "請輸入你的週報 Excel 完整路徑（可直接把檔案拖進這個視窗）",
+         lambda v: bool(v) and check_excel(Path(v).expanduser()) is None, parse_excel),
+    ]
+    missing = []
+    for key, label, prompt, valid, parse in fields:
+        current = str(config.get(key) or "")
+        if valid(current):
+            print(f"  {label}：{current}（已設定，沿用）")
+            continue
+        if key == "excel_path" and current:
             print(f"  目前設定的 Excel 無法使用：{current}")
-        picked = ask_excel()
-        if picked:
-            config["excel_path"] = picked
-            excel_ok = True
-            print(f"  已設定週報 Excel：{picked}")
+        value = ask(prompt, parse)
+        if value:
+            config[key] = value
+            print(f"  已設定{label}：{value}")
+        else:
+            missing.append(label)
 
     if config != before or not CONFIG.exists():
         CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    todo = []
-    if not excel_ok:
-        todo.append(f"尚未設定週報 Excel：重跑一次安裝程式，或編輯 {CONFIG} 的 excel_path。")
-    if str(config.get("name", "")).startswith("請填") or config.get("role") not in ("PM", "SA", "SD", "PG"):
-        todo.append(f"請編輯 {CONFIG}，填入姓名（name）與角色（role：PM / SA / SD / PG）。")
-    return todo
+    if missing:
+        return [f"尚未設定{'、'.join(missing)}：重跑一次安裝程式，或編輯 {CONFIG}。"]
+    return []
 
 
 def main() -> None:
