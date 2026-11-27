@@ -240,7 +240,8 @@ def main() -> None:
 
     print("\n==== 安裝完成 ====")
     warnings = []
-    if not shutil.which("claude"):
+    native = HOME / ".local" / "bin" / ("claude.exe" if os.name == "nt" else "claude")
+    if not shutil.which("claude") and not native.is_file():  # 與 log_writer.find_claude 相同的找法
         warnings.append("找不到 claude 指令：記錄仍會寫入，但摘要會變成「待補」。請確認 Claude Code CLI 已安裝並在 PATH 中。")
     warnings += todo
     if not ok_xlsx:

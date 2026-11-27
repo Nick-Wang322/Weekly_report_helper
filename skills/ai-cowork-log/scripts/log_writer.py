@@ -241,6 +241,19 @@ def fallback_fields(ex: dict, reason: str) -> dict:
     }
 
 
+def find_claude() -> str:
+    """
+    PATH 找不到時，退回官方安裝程式的固定位置 ~/.local/bin（macOS、Windows 相同）。
+    hook 繼承 Claude Code 的環境：從 Dock 開的 App、或在 PATH 更新前就開著的 VS Code，
+    PATH 常常不完整。
+    """
+    found = shutil.which("claude")
+    if found:
+        return found
+    native = Path.home() / ".local" / "bin" / ("claude.exe" if os.name == "nt" else "claude")
+    return str(native) if native.is_file() else "claude"
+
+
 def summarize(ex: dict) -> dict:
     tag_list = "\n".join(f"{t} = {TAG_HINT[t]}" for t in VALID_TAGS)
     prompt = (
@@ -257,7 +270,7 @@ def summarize(ex: dict) -> dict:
     # 會被 cmd.exe 拆壞，所以 prompt 一律走 stdin，並明確用 UTF-8 收發。
     try:
         proc = subprocess.run(
-            [shutil.which("claude") or "claude", "-p", "--model", SUMMARY_MODEL],
+            [find_claude(), "-p", "--model", SUMMARY_MODEL],
             input=prompt, capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=SUMMARY_TIMEOUT, env=env,
         )
