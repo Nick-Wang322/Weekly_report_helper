@@ -86,11 +86,14 @@ def install_hooks() -> None:
         backup(SETTINGS)
 
     writer = (SKILLS_DIR / "ai-cowork-log" / "scripts" / "log_writer.py").as_posix()
+    # Claude Code 在 Windows 用 PowerShell 執行 hook：以引號開頭的指令會被當成字串而 ParserError，
+    # 必須加呼叫運算子 &。
+    call = "& " if os.name == "nt" else ""
     wanted = {
         "UserPromptSubmit": {"type": "command", "timeout": 10,
-                             "command": f"{q(PY)} {q(writer)} --event start"},
+                             "command": f"{call}{q(PY)} {q(writer)} --event start"},
         "Stop": {"type": "command", "timeout": 40,
-                 "command": f"{q(PY)} {q(writer)} --event end --from-transcript"},
+                 "command": f"{call}{q(PY)} {q(writer)} --event end --from-transcript"},
     }
     hooks = settings.setdefault("hooks", {})
     for event, hook in wanted.items():
