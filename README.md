@@ -39,7 +39,7 @@
 1. **Claude Code**：已安裝並登入（終端機輸入 `claude --version` 有版本號即可）。
 2. **Python 3.10 以上**
    - macOS：終端機輸入 `python3 --version` 確認。版本太舊可用 [python.org](https://www.python.org/downloads/) 或 `brew install python` 安裝。
-   - Windows：在 PowerShell 輸入 `py --version`，顯示 `Python 3.10` 以上即可。沒有的話，從 [python.org](https://www.python.org/downloads/) 或 Microsoft Store 安裝 **Python install manager**，裝好後重開 PowerShell 再確認一次。不需要另外設定 PATH。
+   - Windows：在 PowerShell 輸入 `py --version`，顯示 `Python 3.10` 以上即可；`py` 找不到的話改輸入 `python --version`，兩個指令**只要有一個能用就行**，後面的步驟就用那個指令。都不行的話，從 [python.org](https://www.python.org/downloads/) 或 Microsoft Store 安裝 **Python install manager**，裝好後重開 PowerShell 再確認一次。
 3. **週報 Excel 範本**：使用部門提供的 FSB AI 週報 Excel，裡面要有 `AI_Weekly_Data` 工作表。（只用記錄功能的話可以先不用。）
 
 ---
@@ -70,6 +70,8 @@ python3 install.py
 ```powershell
 py install.py
 ```
+
+（`py` 找不到的話改用 `python install.py`，結果完全相同：安裝程式會記下執行它的 Python 完整路徑寫進 hook。）
 
 安裝程式會：
 
@@ -157,15 +159,18 @@ hook 執行時找不到 `claude` 指令。確認在終端機輸入 `claude --ver
 3. 確認是用上面「適用環境」表中 ✅ 的方式使用。
 
 **Windows 顯示 `需要 Python 3.10 以上`**
-`py` 用到的 Python 版本太舊。安裝新版 Python（見「安裝前準備」）後重開 PowerShell，再執行一次 `py install.py`。
+`py`／`python` 用到的 Python 版本太舊。安裝新版 Python（見「安裝前準備」）後重開 PowerShell，再執行一次安裝程式。
 
-**Windows 找不到 `py`，或輸入 `python` 會跳出 Microsoft Store**
+**Windows 找不到 `py`**
+先改用 `python install.py`。`python --version` 能顯示 3.10 以上就沒問題，不需要特別讓 `py` 能用。
+
+**Windows `py` 和 `python` 都找不到，或輸入 `python` 會跳出 Microsoft Store**
 依序檢查（出自 [Python 官方 Windows 說明](https://docs.python.org/3/using/windows.html) 的疑難排解）：
 1. 確認已安裝 **Python install manager**（python.org 或 Microsoft Store）。
 2. 開始選單搜尋「管理應用程式執行別名」，確認 Python 相關的別名是開啟的；已開啟的話，關掉再打開一次。
 3. 確認 PATH 環境變數裡有 `%UserProfile%\AppData\Local\Microsoft\WindowsApps`。
 
-每一步做完都要重開 PowerShell，再輸入 `py --version` 確認。
+每一步做完都要重開 PowerShell，再輸入 `py --version` 或 `python --version` 確認。
 
 **想調整摘要時間上限或模型**
 可設定環境變數：`AI_COWORK_LOG_TIMEOUT`（秒，預設 25）、`AI_COWORK_LOG_MODEL`（預設 `haiku`）、`AI_COWORK_LOG_DIR`（記錄資料夾）。
@@ -176,7 +181,7 @@ hook 執行時找不到 `claude` 指令。確認在終端機輸入 `claude --ver
 
 ```bash
 git pull          # 或重新下載 ZIP
-python3 install.py   # Windows：py install.py
+python3 install.py   # Windows：py install.py 或 python install.py
 ```
 
 你的記錄檔與 `.weekly_config.json` 不會被覆蓋。
